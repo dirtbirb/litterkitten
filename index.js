@@ -4,9 +4,9 @@ const Discord = require('discord.js');
 const client = new Discord.Client();
 
 const directions = ['n', 'ne', 'e', 'se', 's', 'sw', 'sw', 'w', 'nw'];
+const msg_dead_end = "```\n\n\nDead End\nYou have come to a dead end in the maze.\n\n\n```";
 const msg_hit_wall = "```\n\n\nYou can't go that way.\n\n\n```";
 const msg_in_maze = "```\n\n\nMaze\nThis is part of a maze of twisty little passages, all alike.\n\n\n```";
-const msg_dead_end = "```\n\n\nDead End\nYou have come to a dead end in the maze.\n\n\n```";
 
 var channel;
 var combos = [];
@@ -56,7 +56,7 @@ client.on('message', msg => {
   if (msg.author.id === client.id) return;
 
   // Respond to !listen from any channel
-  if (msg.content.startsWith('!listen')) {
+  if (msg.content.startsWith('pls listen')) {
     channel = msg.channel;
     send('Listening to this channel');
     return;
@@ -64,12 +64,12 @@ client.on('message', msg => {
 
   // Ignore everything except the !listen channel
   if (!channel || channel != msg.channel) return;
-  //console.log(msg)
 
   // Stop command
-  if (msg.content.startsWith('!stop')) {
+  if (msg.content.startsWith('pls stop')) {
     search_active = false;
     combo_active = false;
+    send('Aborted any things');
     return;
   }
 
@@ -114,16 +114,15 @@ client.on('message', msg => {
     return;
   }
 
-  // Other commands
-  // Ignore if doesn't start with !
-  if (!msg.content.startsWith('!')) return;
+  // Ignore everything else if doesn't start with pls
+  if (!msg.content.startsWith('pls ')) return;
   // Parse into command and parameters
-  let i = msg.content.indexOf(' ');
+  let i = msg.content.indexOf(' ', 4);
   if (i > 0) {
-    let cmd = msg.content.slice(1, i);
-    let params = msg.content.slice(i + 1);
+    var cmd = msg.content.slice(4, i);
+    var params = msg.content.slice(i + 1);
   } else {
-    let cmd = msg.content.slice(1);
+    var cmd = msg.content.slice(4);
   }
   // Commands
   switch (cmd) {
@@ -133,13 +132,13 @@ client.on('message', msg => {
         break;
       }
       combo_index = Number(params) - 1;
-      send(`Doing thing ${combo_index.toString()}: ${combos[combo_index].join(',')}`);
+      send(`Doing thing ${(combo_index + 1).toString()}: ${combos[combo_index].join(',')}`);
       combo_step = 0;
       combo_active = true;
       game_cmd(combos[combo_index][combo_step]);
       break;
     case 'ping':
-      send('pong');
+      send('Pong');
       break;
     case 'save':
       combo = params.split(',');
