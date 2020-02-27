@@ -3,6 +3,7 @@ const path = require('path');
 const Discord = require('discord.js');
 const client = new Discord.Client();
 
+const bot_url = 'https://github.com/dirtbirb/litterkitten'
 const directions = ['n', 'ne', 'e', 'se', 's', 'sw', 'sw', 'w', 'nw'];
 const msg_dead_end = "```\n\n\nDead End\nYou have come to a dead end in the maze.\n\n\n```";
 const msg_hit_wall = "```\n\n\nYou can't go that way.\n\n\n```";
@@ -32,6 +33,13 @@ function send(msg) {
 function stop() {
   combo_active = false;
   search_active = false;
+  client.user.setPresence({
+    game: {
+      name: `\#${channel.name}`,
+      type: 'LISTENING',
+      url: bot_url
+    }
+  });
 }
 
 // Change direction
@@ -52,7 +60,7 @@ client.on('ready', () => {
     game: {
       name: 'a bug',
       type: 'WATCHING',
-      url: 'https://github.com/dirtbirb/litterkitten'
+      url: bot_url
     }
   });
   console.log(`Logged in as ${client.user.tag}.`);
@@ -66,15 +74,8 @@ client.on('message', msg => {
   // Respond to !listen from any channel
   if (msg.content.startsWith('pls listen')) {
     channel = msg.channel;
-    client.user.setPresence({
-      game: {
-        name: `#${channel.name}`,
-        type: 'LISTENING',
-        url: 'https://github.com/dirtbirb/litterkitten'
-      }
-    });
     send('Listening to this channel.');
-
+    stop();
     return;
   }
 
@@ -83,9 +84,7 @@ client.on('message', msg => {
 
   // Stop command
   if (msg.content.startsWith('pls stop')) {
-    search_active = false;
-    combo_active = false;
-    send('Aborted any things');
+    stop();
     return;
   }
 
@@ -100,9 +99,8 @@ client.on('message', msg => {
         send('Did the thing.');
       }
     } else {
-      send('Thing got weird, aborting thing.')
-      search_active = false;
-      combo_active = false;
+      stop();
+      send(`Thing ${combo_index+1} got weird, aborting thing.`)
     }
     return;
   }
@@ -124,7 +122,7 @@ client.on('message', msg => {
         turn(4);
         break;
       default:
-        search_active = false;
+        stop();
         send('Found something!');
     }
     return;
@@ -152,6 +150,13 @@ client.on('message', msg => {
       }
       combo_index = Number(params) - 1;
       send(`Doing thing ${(combo_index + 1).toString()}: ${combos[combo_index].join(',')}`);
+      client.user.setPresence({
+        game: {
+          name: `thing ${combo_index + 1}...`,
+          type: 'PLAYING',
+          url: bot_url
+        }
+      });
       combo_step = 0;
       combo_active = true;
       game_cmd(combos[combo_index][combo_step]);
@@ -167,6 +172,13 @@ client.on('message', msg => {
     case 'screensaver':
       search_active = true;
       search_direction = 7;
+      client.user.setPresence({
+        game: {
+          name: `Windows 95 screensaver mode...`,
+          type: 'PLAYING',
+          url: bot_url
+        }
+      });
       game_cmd(directions[search_direction]);
       break;
     default:
