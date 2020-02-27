@@ -47,6 +47,14 @@ client.on('error', err => {
 
 // Handle client ready
 client.on('ready', () => {
+  client.user.setStatus('available');
+  client.user.setPresence({
+    game: {
+      name: 'a bug',
+      type: 'WATCHING',
+      url: 'https://github.com/dirtbirb/litterkitten'
+    }
+  });
   console.log(`Logged in as ${client.user.tag}.`);
 });
 
@@ -58,7 +66,15 @@ client.on('message', msg => {
   // Respond to !listen from any channel
   if (msg.content.startsWith('pls listen')) {
     channel = msg.channel;
-    send('Listening to this channel');
+    client.user.setPresence({
+      game: {
+        name: `#${channel.name}`,
+        type: 'LISTENING',
+        url: 'https://github.com/dirtbirb/litterkitten'
+      }
+    });
+    send('Listening to this channel.');
+
     return;
   }
 
@@ -126,6 +142,9 @@ client.on('message', msg => {
   }
   // Commands
   switch (cmd) {
+    case 'bird':
+      msg.channel.send('?bird');
+      break;
     case 'do':
       if (isNaN(params)) {
         send(`${params} doesn't appear to be a number.`);
