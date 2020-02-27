@@ -1,8 +1,8 @@
+const discord = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-const Discord = require('discord.js');
-const client = new Discord.Client();
 
+const bot = new discord.Client();
 const bot_url = 'https://github.com/dirtbirb/litterkitten'
 const directions = ['n', 'ne', 'e', 'se', 's', 'sw', 'sw', 'w', 'nw'];
 const msg_dead_end = "```\n\n\nDead End\nYou have come to a dead end in the maze.\n\n\n```";
@@ -33,7 +33,7 @@ function send(msg) {
 function stop() {
   combo_active = false;
   search_active = false;
-  client.user.setPresence({
+  bot.user.setPresence({
     game: {
       name: `\#${channel.name}`,
       type: 'LISTENING',
@@ -49,27 +49,27 @@ function turn(distance) {
 }
 
 // Handle client errors
-client.on('error', err => {
+bot.on('error', err => {
   console.log('Discord client error: ' + err);
 });
 
 // Handle client ready
-client.on('ready', () => {
-  client.user.setStatus('available');
-  client.user.setPresence({
+bot.on('ready', () => {
+  bot.user.setStatus('available');
+  bot.user.setPresence({
     game: {
       name: 'a bug',
       type: 'WATCHING',
       url: bot_url
     }
   });
-  console.log(`Logged in as ${client.user.tag}.`);
+  console.log(`Logged in as ${bot.user.tag}.`);
 });
 
 // Handle text messages
-client.on('message', msg => {
+bot.on('message', msg => {
   // Always ignore self
-  if (msg.author.id === client.id) return;
+  if (msg.author.id === bot.id) return;
 
   // Respond to !listen from any channel
   if (msg.content.startsWith('pls listen')) {
@@ -150,7 +150,7 @@ client.on('message', msg => {
       }
       combo_index = Number(params) - 1;
       send(`Doing thing ${(combo_index + 1).toString()}: ${combos[combo_index].join(',')}`);
-      client.user.setPresence({
+      bot.user.setPresence({
         game: {
           name: `thing ${combo_index + 1}...`,
           type: 'PLAYING',
@@ -172,7 +172,7 @@ client.on('message', msg => {
     case 'screensaver':
       search_active = true;
       search_direction = 7;
-      client.user.setPresence({
+      bot.user.setPresence({
         game: {
           name: `Windows 95 screensaver mode...`,
           type: 'PLAYING',
@@ -189,5 +189,5 @@ client.on('message', msg => {
 // Get client token from local txt and login (async)
 fs.readFile(path.join(__dirname, 'bot_token.txt'), 'utf-8', (err, token) => {
   if (err) throw err;
-  client.login(token.trim());
+  bot.login(token.trim());
 });
