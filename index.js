@@ -2,16 +2,6 @@ const fs = require('fs');
 const path = require('path');
 const Discord = require('discord.js');
 const client = new Discord.Client();
-// console.log(client)
-
-// Get client token from local txt and login, asynch because that's fancy
-fs.readFile('bot_token.txt', 'utf-8', (err, token) => {
-  if (err) throw err;
-  client.login(token).catch(err => { console.log(err); });
-});
-
-// client.login(fs.readFileSync('bot_token.txt', 'utf-8')).
-//   catch(err => { console.log('Discord login error: ' + err); });
 
 const directions = ['n', 'ne', 'e', 'se', 's', 'sw', 'sw', 'w', 'nw'];
 const msg_hit_wall = "```\n\n\nYou can't go that way.\n\n\n```";
@@ -26,39 +16,49 @@ var combo_step = 0;
 var search_active = false;
 var search_direction = 7; // west
 
+// Add 1s delay to game commands
 function game_cmd(cmd) {
   setTimeout(function() {
-    channel.send('$' + cmd);
+    channel.send(`$${cmd}`);
   }, (1000));
 }
 
+// Send text messages with blockquotes
+function send(msg) {
+  channel.send(`\`\`\`${msg}\`\`\``);
+}
+
+// Stop combo or search execution
 function stop() {
   combo_active = false;
   search_active = false;
 }
 
+// Change direction
 function turn(distance) {
   search_direction = (search_direction + distance) % directions.length;
   game_cmd(directions[search_direction]);
 }
 
+// Handle client errors
 client.on('error', err => {
   console.log('Discord client error: ' + err);
 });
 
+// Handle client ready
 client.on('ready', () => {
-  console.log(`Logged in as ${client.user.tag}!`);
+  console.log(`Logged in as ${client.user.tag}.`);
 });
 
+// Handle text messages
 client.on('message', msg => {
   // Always ignore self
-  // TODO: get own id on login
-  if (msg.author.username === 'litterkitten') return;
+  if (msg.author.id === client.id) return;
 
   // Respond to !listen from any channel
   if (msg.content.startsWith('!listen')) {
     channel = msg.channel;
-    msg.channel.send('```Listening to this channel```');
+    send('Listening to this channel');
     return;
   }
 
@@ -75,18 +75,16 @@ client.on('message', msg => {
 
   // Preset combo loop
   if (combo_active) {
-    if (msg.author.username != 'Trashventure') {
-      return;
-    }
+    if (msg.author.username != 'Trashventure') return;
     if (msg.content === msg_in_maze) {
       combo_step += 1;
       game_cmd(combos[combo_index][combo_step]);
       if (combo_step == combos[combo_index].length - 1) {
         combo_active = false;
-        msg.channel.send('```Did the thing.```');
+        send('Did the thing.');
       }
     } else {
-      msg.channel.send('```Thing got weird, aborting thing.```')
+      send('Thing got weird, aborting thing.')
       search_active = false;
       combo_active = false;
     }
@@ -95,9 +93,7 @@ client.on('message', msg => {
 
   // Search loop
   if (search_active) {
-    if (msg.author.username != 'Trashventure') {
-      return;
-    }
+    if (msg.author.username != 'Trashventure') return;
     switch (msg.content) {
       case msg_hit_wall:
         // turn right 45*
@@ -113,7 +109,7 @@ client.on('message', msg => {
         break;
       default:
         search_active = false;
-        msg.channel.send('```Found something!```');
+        send('Found something!');
     }
     return;
   }
@@ -129,26 +125,26 @@ client.on('message', msg => {
   } else {
     let cmd = msg.content.slice(1);
   }
-  // Do command
+  // Commands
   switch (cmd) {
     case 'do':
       if (isNaN(params)) {
-        msg.channel.send(params + " doesn't appear to be a number.");
+        send(`${params} doesn't appear to be a number.`);
         break;
       }
       combo_index = Number(params) - 1;
-      msg.channel.send('```Doing thing ' + combo_index.toString() + ': ' + combos[combo_index].join(',') + '```');
+      send(`Doing thing ${combo_index.toString()}: ${combos[combo_index].join(',')}`);
       combo_step = 0;
       combo_active = true;
       game_cmd(combos[combo_index][combo_step]);
       break;
     case 'ping':
-      msg.channel.send('```pong```');
+      send('pong');
       break;
     case 'save':
       combo = params.split(',');
       combos.push(combo);
-      msg.channel.send('```Thing ' + combos.length.toString() + ': ' + combo.join(',') + '```');
+      send(`Thing ${combos.length.toString()}: ${combo.join(',')}`);
       break;
     case 'screensaver':
       search_active = true;
@@ -156,6 +152,12 @@ client.on('message', msg => {
       game_cmd(directions[search_direction]);
       break;
     default:
-      msg.channel.send(cmd + '```Mrow?```');
+      send(cmd + 'Mrow?');
   }
+});
+
+// Get client token from local txt and login (async)
+fs.readFile(path.join(__dirname, 'bot_token.txt'), 'utf-8', (err, token) => {
+  if (err) throw err;
+  client.login(token.trim());
 });
