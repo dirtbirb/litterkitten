@@ -4,7 +4,7 @@ const Discord = require('discord.js');
 const client = new Discord.Client();
 // console.log(client)
 
-// Get client token from local txt and login
+// Get client token from local txt and login, asynch because that's fancy
 fs.readFile('bot_token.txt', 'utf-8', (err, token) => {
   if (err) throw err;
   client.login(token).catch(err => { console.log(err); });
