@@ -1,6 +1,17 @@
+const fs = require('fs');
+const path = require('path');
 const Discord = require('discord.js');
 const client = new Discord.Client();
 // console.log(client)
+
+// Get client token from local txt and login
+fs.readFile('bot_token.txt', 'utf-8', (err, token) => {
+  if (err) throw err;
+  client.login(token).catch(err => { console.log(err); });
+});
+
+// client.login(fs.readFileSync('bot_token.txt', 'utf-8')).
+//   catch(err => { console.log('Discord login error: ' + err); });
 
 const directions = ['n', 'ne', 'e', 'se', 's', 'sw', 'sw', 'w', 'nw'];
 const msg_hit_wall = "```\n\n\nYou can't go that way.\n\n\n```";
@@ -31,27 +42,28 @@ function turn(distance) {
   game_cmd(directions[search_direction]);
 }
 
+client.on('error', err => {
+  console.log('Discord client error: ' + err);
+});
+
 client.on('ready', () => {
   console.log(`Logged in as ${client.user.tag}!`);
 });
 
 client.on('message', msg => {
-  // Ignore self
-  if (msg.author.username === 'litterkitten') {
-    return;
-  }
+  // Always ignore self
+  // TODO: get own id on login
+  if (msg.author.username === 'litterkitten') return;
 
-  // Listen command
+  // Respond to !listen from any channel
   if (msg.content.startsWith('!listen')) {
     channel = msg.channel;
     msg.channel.send('```Listening to this channel```');
     return;
   }
 
-  // Verify channel
-  if (!channel || channel != msg.channel) {
-    return;
-  }
+  // Ignore everything except the !listen channel
+  if (!channel || channel != msg.channel) return;
   //console.log(msg)
 
   // Stop command
@@ -61,7 +73,7 @@ client.on('message', msg => {
     return;
   }
 
-  // Combo loop
+  // Preset combo loop
   if (combo_active) {
     if (msg.author.username != 'Trashventure') {
       return;
@@ -74,7 +86,7 @@ client.on('message', msg => {
         msg.channel.send('```Did the thing.```');
       }
     } else {
-      msg.channel.send('```Shit got weird, aborting thing.```')
+      msg.channel.send('```Thing got weird, aborting thing.```')
       search_active = false;
       combo_active = false;
     }
@@ -107,16 +119,17 @@ client.on('message', msg => {
   }
 
   // Other commands
-  if (!msg.content.startsWith('!')) {
-    return;
-  }
-  var i = msg.content.indexOf(' ');
+  // Ignore if doesn't start with !
+  if (!msg.content.startsWith('!')) return;
+  // Parse into command and parameters
+  let i = msg.content.indexOf(' ');
   if (i > 0) {
-    var cmd = msg.content.slice(1, i);
-    var params = msg.content.slice(i + 1);
+    let cmd = msg.content.slice(1, i);
+    let params = msg.content.slice(i + 1);
   } else {
-    var cmd = msg.content.slice(1);
+    let cmd = msg.content.slice(1);
   }
+  // Do command
   switch (cmd) {
     case 'do':
       if (isNaN(params)) {
@@ -146,5 +159,3 @@ client.on('message', msg => {
       msg.channel.send(cmd + '```Mrow?```');
   }
 });
-
-client.login('NjgxMzEyMDcwODU5MjI3MTU2.XlMnjQ.mXy6zWyWJzYk40QQOi2ZujIAwo0');
