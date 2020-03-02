@@ -1,13 +1,16 @@
 const discord = require('discord.js');
-const fs = require('fs');
-const path = require('path');
+const fs = require('fs');               // filesystem access to read bot token
+const path = require('path');           // pathing to find bot token
 
 const bot = new discord.Client();
 const bot_url = 'https://github.com/dirtbirb/litterkitten'
 const directions = ['n', 'ne', 'e', 'se', 's', 'sw', 'sw', 'w', 'nw'];
-const msg_dead_end = "```\n\n\nDead End\nYou have come to a dead end in the maze.\n\n\n```";
+const msg_dead_end = "```\n\n\nDead End" +
+  "\nYou have come to a dead end in the maze.\n\n\n```";
+const msg_dude = "Someone carrying a large bag is casually leaning";
 const msg_hit_wall = "```\n\n\nYou can't go that way.\n\n\n```";
-const msg_in_maze = "```\n\n\nMaze\nThis is part of a maze of twisty little passages, all alike.\n\n\n```";
+const msg_in_maze = "```\n\n\nMaze" +
+  "\nThis is part of a maze of twisty little passages, all alike.\n\n\n```";
 
 var channel;
 var combos = [];
@@ -16,12 +19,37 @@ var combo_index = 0;
 var combo_step = 0;
 var search_active = false;
 var search_direction = 7; // west
+var script = [];
+var script_active = false;
 
 // Add 1s delay to game commands
 function game_cmd(cmd) {
   setTimeout(function() {
     channel.send(`$${cmd}`);
   }, (1000));
+}
+
+
+function load_script(fn) {
+  function load_line(line) {
+    for (cmd of line.split(',')) script.push(cmd.trim());
+  }
+
+  text = fs.readFileSync(path.join(__dirname, `scripts/${fn}`), 'utf-8');
+  lines = text.split('\n');
+  let long = false;
+  for (line of lines) {
+    if (long) {
+      load_line(line);
+      long = false;
+    } else if (line.startsWith('>')) {
+      if (line === '>') long = true;  // commands are on next line
+      else load_line(line.slice(1));  // commands are on this line
+    }
+  }
+  // for (command of script) {
+  //   console.log(command);
+  // }
 }
 
 // Send text messages with blockquotes
@@ -33,6 +61,7 @@ function send(msg) {
 function stop() {
   combo_active = false;
   search_active = false;
+  script_active = false;
   bot.user.setPresence({
     game: {
       name: `\#${channel.name}`,
@@ -48,12 +77,12 @@ function turn(distance) {
   game_cmd(directions[search_direction]);
 }
 
-// Handle client errors
+// Report client errors
 bot.on('error', err => {
   console.log('Discord client error: ' + err);
 });
 
-// Handle client ready
+// Set status on client ready
 bot.on('ready', () => {
   bot.user.setStatus('available');
   bot.user.setPresence({
@@ -66,7 +95,7 @@ bot.on('ready', () => {
   console.log(`Logged in as ${bot.user.tag}.`);
 });
 
-// Handle text messages
+// Handle chat messages
 bot.on('message', msg => {
   // Always ignore self
   if (msg.author.id === bot.id) return;
@@ -75,7 +104,7 @@ bot.on('message', msg => {
   if (msg.content.startsWith('pls listen')) {
     channel = msg.channel;
     send('Listening to this channel.');
-    stop();
+    stop(); // stops any actions and updates status
     return;
   }
 
@@ -88,45 +117,59 @@ bot.on('message', msg => {
     return;
   }
 
-  // Preset combo loop
-  if (combo_active) {
+  // Loops for continuous tasks
+  if (combo_active || search_active || script_active) {
     if (msg.author.username != 'Trashventure') return;
-    if (msg.content === msg_in_maze) {
-      combo_step += 1;
-      game_cmd(combos[combo_index][combo_step]);
-      if (combo_step == combos[combo_index].length - 1) {
-        combo_active = false;
-        send('Did the thing.');
-      }
-    } else {
-      stop();
-      send(`Thing ${combo_index+1} got weird, aborting thing.`)
-    }
-    return;
-  }
 
-  // Search loop
-  if (search_active) {
-    if (msg.author.username != 'Trashventure') return;
-    switch (msg.content) {
-      case msg_hit_wall:
+    // Preset combos
+    if (combo_active) {
+      if (msg.content === msg_in_maze) {
+        combo_step += 1;
+        game_cmd(combos[combo_index][combo_step]);
+        if (combo_step == combos[combo_index].length - 1) {
+          combo_active = false;
+          send('Did the thing.');
+        }
+      } else {
+        stop();
+        send(`Thing ${combo_index + 1} got weird, aborting thing.`)
+      }
+    }
+
+    // Maze search
+    else if (search_active) {
+      switch (msg.content) {
+        case msg_hit_wall:
         // turn right 45*
         turn(1);
         break;
-      case msg_in_maze:
+        case msg_in_maze:
         // turn left 90*
         turn(-2);
         break;
-      case msg_dead_end:
+        case msg_dead_end:
         // turn around 180*
         turn(4);
         break;
-      default:
+        default:
         stop();
         send('Found something!');
+      }
     }
+
+    // Script replay
+    else if (script_active) {
+      if (msg.content.search(msg_dude) !== -1) {
+        stop();
+        send("HISSSSSSS!!!");
+      } else if (script.length) {
+        game_cmd(script.shift());
+      } else stop();
+    }
+
     return;
   }
+
 
   // Ignore everything else if doesn't start with pls
   if (!msg.content.startsWith('pls ')) return;
@@ -149,7 +192,8 @@ bot.on('message', msg => {
         break;
       }
       combo_index = Number(params) - 1;
-      send(`Doing thing ${(combo_index + 1).toString()}: ${combos[combo_index].join(',')}`);
+      send(`Doing thing ${(combo_index + 1)}: ` +
+        `${combos[combo_index].join(',')}`);
       bot.user.setPresence({
         game: {
           name: `thing ${combo_index + 1}...`,
@@ -164,6 +208,22 @@ bot.on('message', msg => {
     case 'ping':
       send('Pong');
       break;
+    case 'replay':
+      let response;
+      if (load_script(params)) {
+        response = `Replaying script ${params}.`
+        bot.user.setPresence({
+          game: {
+            name: `script ${params}...`,
+            type: 'PLAYING',
+            url: bot_url
+          }
+        });
+      } else {
+        response = `Failed to load script ${params}.`;
+      }
+      send(response);
+      break;
     case 'save':
       combo = params.split(',');
       combos.push(combo);
@@ -174,7 +234,7 @@ bot.on('message', msg => {
       search_direction = 7;
       bot.user.setPresence({
         game: {
-          name: `Windows 95 screensaver mode...`,
+          name: `Windows 95 screensaver mode!`,
           type: 'PLAYING',
           url: bot_url
         }
@@ -189,5 +249,5 @@ bot.on('message', msg => {
 // Get client token from local txt and login (async)
 fs.readFile(path.join(__dirname, 'bot_token.txt'), 'utf-8', (err, token) => {
   if (err) throw err;
-  bot.login(token.trim());
+  bot.login(token.trim());  // remove carriage return
 });
