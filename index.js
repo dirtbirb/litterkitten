@@ -29,10 +29,12 @@ function game_cmd(cmd) {
   }, (1000));
 }
 
+// Load commands from line of script
 function load_line(line) {
   for (cmd of line.split(',')) script.push(cmd.trim());
 }
 
+// Load lines from script file
 function load_script(fn) {
   text = fs.readFileSync(path.join(__dirname, `scripts/${fn}`), 'utf-8');
   lines = text.split('\n');
