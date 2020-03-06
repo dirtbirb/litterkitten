@@ -29,12 +29,11 @@ function game_cmd(cmd) {
   }, (1000));
 }
 
+function load_line(line) {
+  for (cmd of line.split(',')) script.push(cmd.trim());
+}
 
 function load_script(fn) {
-  function load_line(line) {
-    for (cmd of line.split(',')) script.push(cmd.trim());
-  }
-
   text = fs.readFileSync(path.join(__dirname, `scripts/${fn}`), 'utf-8');
   lines = text.split('\n');
   let long = false;
@@ -47,9 +46,6 @@ function load_script(fn) {
       else load_line(line.slice(1));  // commands are on this line
     }
   }
-  // for (command of script) {
-  //   console.log(command);
-  // }
 }
 
 // Send text messages with blockquotes
@@ -100,7 +96,7 @@ bot.on('message', msg => {
   // Always ignore self
   if (msg.author.id === bot.id) return;
 
-  // Respond to !listen from any channel
+  // Respond to listen request from any channel
   if (msg.content.startsWith('pls listen')) {
     channel = msg.channel;
     send('Listening to this channel.');
@@ -108,7 +104,7 @@ bot.on('message', msg => {
     return;
   }
 
-  // Ignore everything except the !listen channel
+  // Ignore everything except the listened channel
   if (!channel || channel != msg.channel) return;
 
   // Stop command
@@ -167,11 +163,11 @@ bot.on('message', msg => {
       } else stop();
     }
 
+    // Don't check for new commands if running a continuous task
     return;
   }
 
-
-  // Ignore everything else if doesn't start with pls
+  // Ignore everything else that doesn't start with "pls"
   if (!msg.content.startsWith('pls ')) return;
   // Parse into command and parameters
   let i = msg.content.indexOf(' ', 4);
@@ -242,12 +238,12 @@ bot.on('message', msg => {
       game_cmd(directions[search_direction]);
       break;
     default:
-      send(cmd + 'Mrow?');
+      send('Mrow?');
   }
 });
 
 // Get client token from local txt and login (async)
 fs.readFile(path.join(__dirname, 'bot_token.txt'), 'utf-8', (err, token) => {
   if (err) throw err;
-  bot.login(token.trim());  // remove carriage return
+  bot.login(token.trim());
 });
