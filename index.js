@@ -1,16 +1,27 @@
+// Litterkitten
+// github.com/dirtbirb/litterkitten
+//
+// Discord bot to interact with other bots in my server
+// Mainly helps users play text adventure games
+// Communicate using 'pls cmd', ex: 'pls listen'
+
 const discord = require('discord.js');
 const fs = require('fs');               // filesystem access to read bot token
 const path = require('path');           // pathing to find bot token
 
+const ADV_BOT_NAME = 'Trashventure';
+const BOT_URL = 'https://github.com/dirtbirb/litterkitten';
+const CMD_PREFIX = 'pls ';
+const DELAY = 1000;   // Wait time for adventure bot to respond
+
 const bot = new discord.Client();
-const bot_url = 'https://github.com/dirtbirb/litterkitten'
 const directions = ['n', 'ne', 'e', 'se', 's', 'sw', 'sw', 'w', 'nw'];
 const msg_dead_end = "```\n\n\nDead End" +
   "\nYou have come to a dead end in the maze.\n\n\n```";
-const msg_dude = "Someone carrying a large bag is casually leaning";
 const msg_hit_wall = "```\n\n\nYou can't go that way.\n\n\n```";
 const msg_in_maze = "```\n\n\nMaze" +
   "\nThis is part of a maze of twisty little passages, all alike.\n\n\n```";
+const msg_thief = "Someone carrying a large bag";
 
 var channel;
 var combos = [];
@@ -22,19 +33,19 @@ var search_direction = 7; // west
 var script = [];
 var script_active = false;
 
-// Add 1s delay to game commands
+// Add delay to game commands
 function game_cmd(cmd) {
   setTimeout(function() {
     channel.send(`$${cmd}`);
-  }, (1000));
+  }, (DELAY));
 }
 
-// Load commands from line of script
+// Parse commands from one line of script file
 function load_line(line) {
   for (cmd of line.split(',')) script.push(cmd.trim());
 }
 
-// Load lines from script file
+// Load commands from script file
 function load_script(fn) {
   text = fs.readFileSync(path.join(__dirname, `scripts/${fn}`), 'utf-8');
   lines = text.split('\n');
@@ -48,6 +59,8 @@ function load_script(fn) {
       else load_line(line.slice(1));  // commands are on this line
     }
   }
+  console.log(script);
+  return true;
 }
 
 // Send text messages with blockquotes
@@ -64,7 +77,7 @@ function stop() {
     game: {
       name: `\#${channel.name}`,
       type: 'LISTENING',
-      url: bot_url
+      url: BOT_URL
     }
   });
 }
@@ -87,7 +100,7 @@ bot.on('ready', () => {
     game: {
       name: 'a bug',
       type: 'WATCHING',
-      url: bot_url
+      url: BOT_URL
     }
   });
   console.log(`Logged in as ${bot.user.tag}.`);
@@ -99,7 +112,7 @@ bot.on('message', msg => {
   if (msg.author.id === bot.id) return;
 
   // Respond to listen request from any channel
-  if (msg.content.startsWith('pls listen')) {
+  if (msg.content.startsWith(CMD_PREFIX + 'listen')) {
     channel = msg.channel;
     send('Listening to this channel.');
     stop(); // stops any actions and updates status
@@ -110,16 +123,16 @@ bot.on('message', msg => {
   if (!channel || channel != msg.channel) return;
 
   // Stop command
-  if (msg.content.startsWith('pls stop')) {
+  if (msg.content.startsWith(CMD_PREFIX + 'stop')) {
     stop();
     return;
   }
 
   // Loops for continuous tasks
   if (combo_active || search_active || script_active) {
-    if (msg.author.username != 'Trashventure') return;
-
-    // Preset combos
+    // Ignore anyone but the text adventure bot
+    if (msg.author.username !== ADV_BOT_NAME) return;
+    // Saved combos
     if (combo_active) {
       if (msg.content === msg_in_maze) {
         combo_step += 1;
@@ -133,7 +146,6 @@ bot.on('message', msg => {
         send(`Thing ${combo_index + 1} got weird, aborting thing.`)
       }
     }
-
     // Maze search
     else if (search_active) {
       switch (msg.content) {
@@ -154,30 +166,28 @@ bot.on('message', msg => {
         send('Found something!');
       }
     }
-
     // Script replay
     else if (script_active) {
-      if (msg.content.search(msg_dude) !== -1) {
+      if (msg.content.search(msg_thief) !== -1) {
         stop();
         send("HISSSSSSS!!!");
       } else if (script.length) {
         game_cmd(script.shift());
       } else stop();
     }
-
     // Don't check for new commands if running a continuous task
     return;
   }
 
-  // Ignore everything else that doesn't start with "pls"
-  if (!msg.content.startsWith('pls ')) return;
-  // Parse into command and parameters
-  let i = msg.content.indexOf(' ', 4);
+  // Ignore everything else that doesn't start with CMD_PREFIX
+  if (!msg.content.startsWith(CMD_PREFIX)) return;
+  // Parse into command and parameters (if present)
+  let i = msg.content.indexOf(' ', CMD_PREFIX.length);
   if (i > 0) {
-    var cmd = msg.content.slice(4, i);
+    var cmd = msg.content.slice(CMD_PREFIX.length, i);
     var params = msg.content.slice(i + 1);
   } else {
-    var cmd = msg.content.slice(4);
+    var cmd = msg.content.slice(CMD_PREFIX.length);
   }
   // Commands
   switch (cmd) {
@@ -196,7 +206,7 @@ bot.on('message', msg => {
         game: {
           name: `thing ${combo_index + 1}...`,
           type: 'PLAYING',
-          url: bot_url
+          url: BOT_URL
         }
       });
       combo_step = 0;
@@ -209,14 +219,16 @@ bot.on('message', msg => {
     case 'replay':
       let response;
       if (load_script(params)) {
-        response = `Replaying script ${params}.`
+        script_active = true;
+        response = `Replaying script ${params}.`;
         bot.user.setPresence({
           game: {
             name: `script ${params}...`,
             type: 'PLAYING',
-            url: bot_url
+            url: BOT_URL
           }
         });
+        game_cmd(script.shift());
       } else {
         response = `Failed to load script ${params}.`;
       }
@@ -229,12 +241,12 @@ bot.on('message', msg => {
       break;
     case 'screensaver':
       search_active = true;
-      search_direction = 7;
+      search_direction = 7;   // west
       bot.user.setPresence({
         game: {
-          name: `Windows 95 screensaver mode!`,
+          name: 'Windows 95 screensaver mode!',
           type: 'PLAYING',
-          url: bot_url
+          url: BOT_URL
         }
       });
       game_cmd(directions[search_direction]);
