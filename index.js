@@ -190,7 +190,7 @@ bot.on('message', msg => {
     var cmd = msg.content.slice(CMD_PREFIX.length);
   }
   // Commands
-  switch (cmd) {
+  switch (cmd.toLowerCase()) {
     case 'bird':
       msg.channel.send('?bird');
       break;
@@ -214,7 +214,7 @@ bot.on('message', msg => {
       game_cmd(combos[combo_index][combo_step]);
       break;
     case 'ping':
-      send('Pong');
+      send('Pong!');
       break;
     case 'replay':
       let response;
